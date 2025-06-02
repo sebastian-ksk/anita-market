@@ -1,0 +1,71 @@
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - '5678:5678'
+    environment:
+      # Configuración básica
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:-cambiar_password}
+
+      # URL base (cambia por tu dominio o IP)
+      - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:5678/}
+
+      # Configuración de zona horaria
+      - GENERIC_TIMEZONE=${TIMEZONE:-America/Bogota}
+
+      # Persistencia de datos
+      - N8N_USER_FOLDER=/home/node/.n8n
+
+      # Configuración adicional
+      - N8N_LOG_LEVEL=info
+      - N8N_METRICS=true
+
+      # Configuración de base de datos PostgreSQL
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB:-n8n}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER:-n8n}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD:-cambiar_password_db}
+
+    volumes:
+      # Persiste los workflows y configuraciones
+      - n8n_data:/home/node/.n8n
+
+      # Opcional: para usar archivos locales en workflows
+      - ./n8n-local-files:/files
+
+    networks:
+      - n8n_network
+    depends_on:
+      - postgres
+
+  # Base de datos PostgreSQL (recomendado para producción)
+  postgres:
+    image: postgres:13-alpine
+    container_name: n8n_postgres
+    restart: unless-stopped
+    environment:
+      # Contraseña del superusuario postgres (requerida)
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-cambiar_password_db}
+      # Base de datos y usuario específico para N8N
+      - POSTGRES_DB=${POSTGRES_DB:-n8n}
+      - POSTGRES_USER=${POSTGRES_USER:-n8n}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - n8n_network
+    ports:
+      - '5432:5432'
+
+volumes:
+  n8n_data:
+  postgres_data:
+
+networks:
+  n8n_network:
+    driver: bridge
